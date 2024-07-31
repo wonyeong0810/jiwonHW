@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import User, Post, Comment
+from schemas import UserCreate, UserUpdate, PostCreate, PostUpdate, CommentCreate, CommentUpdate
 
 app = FastAPI()
 
@@ -18,13 +19,18 @@ def get_db():
         db.close()
 
 # 사용자 CRUD
-@app.post("/users/")
-def create_user(username: str, email: str, db: Session = Depends(get_db)):
-    db_user = User(username=username, email=email)
+@app.post("/users/", response_model=UserCreate)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = User(username=user.username, email=user.email)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+@app.get("/users/")
+def list_users(db: Session = Depends(get_db)):
+    db_users = db.query(User).all()
+    return db_users
 
 @app.get("/users/{user_id}")
 def read_user(user_id: int, db: Session = Depends(get_db)):
@@ -33,15 +39,15 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@app.put("/users/{user_id}")
-def update_user(user_id: int, username: str = None, email: str = None, db: Session = Depends(get_db)):
+@app.put("/users/{user_id}", response_model=UserUpdate)
+def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if username:
-        db_user.username = username
-    if email:
-        db_user.email = email
+    if user.username is not None:
+        db_user.username = user.username
+    if user.email is not None:
+        db_user.email = user.email
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -56,9 +62,9 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     return {"detail": "User deleted"}
 
 # 게시물 CRUD
-@app.post("/posts/")
-def create_post(title: str, content: str, owner_id: int, db: Session = Depends(get_db)):
-    db_post = Post(title=title, content=content, owner_id=owner_id)
+@app.post("/posts/", response_model=PostCreate)
+def create_post(post: PostCreate, db: Session = Depends(get_db)):
+    db_post = Post(title=post.title, content=post.content, owner_id=post.owner_id)
     db.add(db_post)
     db.commit()
     db.refresh(db_post)
@@ -71,15 +77,15 @@ def read_post(post_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Post not found")
     return db_post
 
-@app.put("/posts/{post_id}")
-def update_post(post_id: int, title: str = None, content: str = None, db: Session = Depends(get_db)):
+@app.put("/posts/{post_id}", response_model=PostUpdate)
+def update_post(post_id: int, post: PostUpdate, db: Session = Depends(get_db)):
     db_post = db.query(Post).filter(Post.id == post_id).first()
     if db_post is None:
         raise HTTPException(status_code=404, detail="Post not found")
-    if title:
-        db_post.title = title
-    if content:
-        db_post.content = content
+    if post.title is not None:
+        db_post.title = post.title
+    if post.content is not None:
+        db_post.content = post.content
     db.commit()
     db.refresh(db_post)
     return db_post
@@ -94,9 +100,9 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
     return {"detail": "Post deleted"}
 
 # 댓글 CRUD
-@app.post("/comments/")
-def create_comment(content: str, post_id: int, creator_id: int, db: Session = Depends(get_db)):
-    db_comment = Comment(content=content, post_id=post_id, creator_id=creator_id)
+@app.post("/comments/", response_model=CommentCreate)
+def create_comment(comment: CommentCreate, db: Session = Depends(get_db)):
+    db_comment = Comment(content=comment.content, post_id=comment.post_id, creator_id=comment.creator_id)
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
@@ -109,13 +115,13 @@ def read_comment(comment_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Comment not found")
     return db_comment
 
-@app.put("/comments/{comment_id}")
-def update_comment(comment_id: int, content: str = None, db: Session = Depends(get_db)):
+@app.put("/comments/{comment_id}", response_model=CommentUpdate)
+def update_comment(comment_id: int, comment: CommentUpdate, db: Session = Depends(get_db)):
     db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
-    if content:
-        db_comment.content = content
+    if comment.content is not None:
+        db_comment.content = comment.content
     db.commit()
     db.refresh(db_comment)
     return db_comment
@@ -128,4 +134,3 @@ def delete_comment(comment_id: int, db: Session = Depends(get_db)):
     db.delete(db_comment)
     db.commit()
     return {"detail": "Comment deleted"}
-
